@@ -1,0 +1,63 @@
+@startuml
+' Configure visual parameters for professional rendering
+skinparam componentStyle uml2
+skinparam linetype ortho
+skinparam PackageBackgroundColor #FFFFFF
+
+title Component & Integration Diagram (GCP Hybrid Environment)
+
+package "Client Layer" {
+    [Customer Web/Mobile Application] as ClientApp
+    [Human Agent Portal] as AgentPortal
+}
+
+package "Google Cloud Ingress" {
+    [Google Cloud Load Balancing] as GCLB
+}
+
+package "Google Kubernetes Engine (GKE) Cluster Boundary" {
+    [User & Session Service] as UserSvc
+    [Chat Orchestrator Service] as Orchestrator
+    [AI Chatbot Engine] as AIEngine
+}
+
+package "Google Cloud Data Services" {
+    [Cloud Memorystore (Redis)] as RedisCache
+    queue "Cloud Pub/Sub" as PubSub
+    [Vertex AI Platform] as VertexAI
+}
+
+package "Cloud Data Synchronization Boundary" {
+    [Google Cloud Dataflow] as Dataflow
+    database "Cloud SQL Read-Replica\n(PostgreSQL)" as CloudSQL
+}
+
+package "On-Premises Enterprise Network" {
+    database "Legacy Customer Database\n(IBM DB2 / Oracle)" as OnPremDB
+}
+
+' --- Data Flow Paths & Interaction Points ---
+
+' Ingress Flows
+ClientApp --> GCLB : HTTPS / WebSockets
+AgentPortal --> GCLB : HTTPS / WebSockets
+GCLB --> Orchestrator : Route App Traffic
+
+' Core Orchestration Dependencies
+Orchestrator --> UserSvc : gRPC (Synchronous Internal)
+Orchestrator --> RedisCache : Cache Protocol (Low Latency State)
+
+' AI Integration Flow Path
+Orchestrator --> AIEngine : gRPC (Model Inference Stream)
+AIEngine --> VertexAI : Internal API (Vector Retrieval)
+
+' Asynchronous Escalation Pathway
+Orchestrator --> PubSub : Async Messaging (Escalation Event)
+PubSub --> AgentPortal : Push Stream (Assignment Queue)
+
+' Hybrid Sync Back-End
+OnPremDB --> Dataflow : CDC Log Stream via VPN
+Dataflow --> CloudSQL : Batch Ingestion / Continuous Sync
+UserSvc --> CloudSQL : SQL Query (Read-Only Profile Context)
+
+@endum
